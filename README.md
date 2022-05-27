@@ -6,7 +6,15 @@ Note that this will **always** use SSL for both WebSocket and HTTP requests. You
 
 Heavily inspired by [mpd-discord-rpc](https://github.com/JakeStanger/mpd-discord-rpc) by [Jake Stanger](https://github.com/JakeStanger).
 
-## Building and installation
+## Installation
+
+Install via cargo:
+
+```bash
+cargo install plex-discord-rpc
+```
+
+## Manual installation
 
 Build a release binary using the following command:
 
