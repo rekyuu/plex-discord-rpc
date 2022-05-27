@@ -1,7 +1,13 @@
 [package]
 name = "plex-discord-rpc"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
+authors = ["rekyuu"]
+description = "Discord Rich Presence for whatever you're watching on Plex."
+license = "GPL-3.0"
+repository = "https://github.com/rekyuu/plex-discord-rpc"
+readme = "README.md"
+keywords = ["discord", "plex", "plex-media-server", "rich-presence", "discord-rpc"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
