@@ -1,6 +1,6 @@
 use crate::constants::{
     CONFIG_FOLDER_NAME, CONFIG_FILE_NAME,
-    DEFAULT_PLEX_HOST, DEFAULT_PLEX_USERNAME, DEFAULT_PLEX_TOKEN,
+    DEFAULT_PLEX_HOST, DEFAULT_PLEX_USERNAME, DEFAULT_PLEX_TOKEN, DEFAULT_PLEX_TLS,
     DEFAULT_DISCORD_APP_ID,
     DEFAULT_DISCORD_LARGE_IMAGE, DEFAULT_DISCORD_SMALL_IMAGE,
     DEFAULT_DISCORD_LARGE_IMAGE_TEXT, DEFAULT_DISCORD_SMALL_IMAGE_TEXT
@@ -17,6 +17,7 @@ pub struct Plex {
     pub(crate) host: Option<String>,
     pub(crate) username: Option<String>,
     pub(crate) token: Option<String>,
+    pub(crate) tls: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize, Merge, Clone)]
@@ -39,7 +40,8 @@ impl Default for Plex {
         Plex {
             host: Some(DEFAULT_PLEX_HOST.to_string()),
             username: Some(DEFAULT_PLEX_USERNAME.to_string()),
-            token: Some(DEFAULT_PLEX_TOKEN.to_string())
+            token: Some(DEFAULT_PLEX_TOKEN.to_string()),
+            tls: Some(DEFAULT_PLEX_TLS),
         }
     }
 }

@@ -12,13 +12,12 @@ use crate::notification_container::NotificationContainerRoot;
 
 use std::{thread, time};
 use std::time::{SystemTime, UNIX_EPOCH};
-use std::net::TcpStream;
 use discord_rpc_client::Client as DiscordClient;
 use discord_rpc_client::models::{Activity, ActivityAssets};
 use discord_rpc_client::models::payload::Payload;
 use quick_xml::de::from_str;
 use websocket::client::builder::ClientBuilder;
-use websocket::native_tls::TlsStream;
+use websocket::stream::sync::NetworkStream;
 use websocket::sync::Client;
 use websocket::url::Url;
 use websocket::ws::dataframe::DataFrame;
@@ -33,11 +32,12 @@ async fn main() {
     let username = &plex_config.username.unwrap();
     let server = &plex_config.host.unwrap();
     let token = &plex_config.token.unwrap();
+    let tls = &plex_config.tls.unwrap();
     let client_id = discord_config.app_id.unwrap();
 
     // Format the WebSocket URL for Plex.
-    let url = get_wss_plex_url(server, "/:/websockets/notifications", token);
-    let wss = Url::parse(&url).unwrap();
+    let url = get_wss_plex_url(server, "/:/websockets/notifications", token, tls);
+    let ws_url = Url::parse(&url).unwrap();
 
     // Start the Discord RPC client.
     let mut discord = DiscordClient::new(client_id);
@@ -46,7 +46,7 @@ async fn main() {
     loop {
         // Clear the cache and continuously attempt to connect to the WebSocket.
         let mut now_playing_cache: Option<CacheObject> = None;
-        let mut client = websocket_idle(&wss);
+        let mut client = websocket_idle(&ws_url);
 
         loop {
             // Wait to receive WebSocket notifications.
@@ -91,7 +91,7 @@ async fn main() {
                             println!("Updating now watching cache.");
 
                             // Validate that the media being played is being watched by the specified user.
-                            let video = match get_session_for_username(server, token, username).await {
+                            let video = match get_session_for_username(server, token, username, tls).await {
                                 Ok(might_be_video) => match might_be_video {
                                     Some(v) => v,
                                     None => continue // no sessions
@@ -181,13 +181,19 @@ fn get_plex_url(server: &str, endpoint: &str, token: &str) -> String {
 }
 
 /// Gets the formatted Plex WebSocket URL using the server token.
-fn get_wss_plex_url(server: &str, endpoint: &str, token: &str) -> String {
-    return format!("wss://{}", get_plex_url(server, endpoint, token));
+fn get_wss_plex_url(server: &str, endpoint: &str, token: &str, tls: &bool) -> String {
+    let mut protocol = "ws";
+    if *tls { protocol = "wss"; }
+
+    return format!("{}://{}", protocol, get_plex_url(server, endpoint, token));
 }
 
-/// Gets the formatted Plex HTTPS URL using the server token.
-fn get_https_plex_url(server: &str, endpoint: &str, token: &str) -> String {
-    return format!("https://{}", get_plex_url(server, endpoint, token));
+/// Gets the formatted Plex HTTP/HTTPS URL using the server token.
+fn get_https_plex_url(server: &str, endpoint: &str, token: &str, tls: &bool) -> String {
+    let mut protocol = "http";
+    if *tls { protocol = "https"; }
+
+    return format!("{}://{}", protocol, get_plex_url(server, endpoint, token));
 }
 
 /// Formats Discord RPC assets, including images and their alt text.
@@ -227,8 +233,8 @@ fn get_start_timestamp_secs(elapsed_ms: &u64) -> u64 {
 }
 
 /// Gets XML data from the provided Plex Server API endpoint.
-async fn get_plex_api(server: &str, endpoint: &str, token: &str) -> Result<String, reqwest::Error> {
-    let url = get_https_plex_url(server, endpoint, token);
+async fn get_plex_api(server: &str, endpoint: &str, token: &str, tls: &bool) -> Result<String, reqwest::Error> {
+    let url = get_https_plex_url(server, endpoint, token, tls);
     let body = reqwest::get(&url)
         .await?
         .text()
@@ -238,8 +244,8 @@ async fn get_plex_api(server: &str, endpoint: &str, token: &str) -> Result<Strin
 }
 
 /// Gets Plex Server session data for the provided username.
-async fn get_session_for_username(server: &str, token: &str, username: &str) -> Result<Option<Video>, &'static str> {
-    return match get_plex_api(server, "/status/sessions", token).await {
+async fn get_session_for_username(server: &str, token: &str, username: &str, tls: &bool) -> Result<Option<Video>, &'static str> {
+    return match get_plex_api(server, "/status/sessions", token, tls).await {
         Ok(xml) => {
             let media_container: MediaContainer = from_str(xml.as_str()).unwrap();
 
@@ -263,14 +269,14 @@ async fn get_session_for_username(server: &str, token: &str, username: &str) -> 
 
 /// Attempts reconnecting to the WebSocket server every so often.
 /// Issues connecting will be logged.
-fn websocket_idle(websocket_url: &Url) -> Client<TlsStream<TcpStream>> {
+fn websocket_idle(websocket_url: &Url) -> Client<Box<dyn NetworkStream + Send>> {
     println!("Entering idle mode.");
 
     let mut last_error = String::from("");
 
     let mut builder = ClientBuilder::from_url(websocket_url);
     loop {
-        match builder.connect_secure(None) {
+        match builder.connect(None) {
             Ok(conn) => {
                 println!("Exiting idle mode.");
                 return conn;
