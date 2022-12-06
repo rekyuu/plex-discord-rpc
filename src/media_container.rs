@@ -12,7 +12,7 @@ pub struct MediaContainer {
 #[serde(rename_all = "camelCase")]
 pub struct Video {
     #[serde(rename = "Media")]
-    pub media: Media,
+    pub media: Option<Vec<Media>>,
     #[serde(rename = "Genre")]
     pub genre: Option<Vec<Genre>>,
     #[serde(rename = "Director")]
@@ -106,7 +106,7 @@ pub struct Media {
 #[serde(rename_all = "camelCase")]
 pub struct Part {
     #[serde(rename = "Stream")]
-    pub stream: Vec<Stream>,
+    pub stream: Option<Vec<Stream>>,
     pub id: Option<String>,
     pub video_profile: Option<String>,
     pub bitrate: Option<String>,
@@ -116,7 +116,7 @@ pub struct Part {
     pub protocol: Option<String>,
     pub width: Option<String>,
     pub decision: Option<String>,
-    pub selected: String
+    pub selected: Option<String>
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Deserialize)]
